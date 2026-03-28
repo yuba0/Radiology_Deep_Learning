@@ -527,8 +527,11 @@ torch.backends.cudnn.deterministic = True
 
 ## 👤 Équipe
 
-Projet réalisé dans le cadre du cours de Deep Learning.
-
+Projet réalisé dans le cadre du cours de Deep Learning & Machine Learning.
+Equipe :
+Matisse MARCHAND
+Zinedine MEFTAH
+Yuba RAHALI
 ---
 
 ## 📄 Références
