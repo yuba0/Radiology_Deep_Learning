@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadIA — Système d'aide au tri radiologique</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #080c10;
+  --bg-1: #0d1117;
+  --bg-2: #141b24;
+  --bg-3: #1c2533;
+  --bg-4: #243040;
+  --cyan: #00d4ff;
+  --cyan-dim: #0099bb;
+  --green: #00ff9d;
+  --green-dim: #00bb74;
+  --red: #ff4757;
+  --amber: #ffa502;
+  --text-1: #e8f4f8;
+  --text-2: #8ba4b8;
+  --text-3: #4a6a7a;
+  --border: rgba(0,212,255,0.12);
+  --border-hover: rgba(0,212,255,0.3);
+  --glow-cyan: 0 0 20px rgba(0,212,255,0.2);
+  --glow-green: 0 0 20px rgba(0,255,157,0.2);
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scanline effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* Grid background */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── HEADER ── */
+header {
+  position: relative;
+  z-index: 10;
+  padding: 0 2rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,12,16,0.95);
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.02em;
+}
+
+.logo-icon {
+  width: 36px; height: 36px;
+  border: 2px solid var(--cyan);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: var(--glow-cyan);
+  animation: pulse-border 3s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%,100% { box-shadow: 0 0 10px rgba(0,212,255,0.3); }
+  50% { box-shadow: 0 0 25px rgba(0,212,255,0.6); }
+}
+
+.logo span { color: var(--cyan); }
+
+.header-status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.header-nav {
+  display: flex; gap: 4px;
+}
+
+.nav-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-btn:hover, .nav-btn.active {
+  border-color: var(--border-hover);
+  color: var(--cyan);
+  background: rgba(0,212,255,0.05);
+}
+
+/* ── MAIN ── */
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* ── TABS ── */
+.tab-pane { display: none; animation: fadeIn 0.3s ease; }
+.tab-pane.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── HERO ── */
+.hero {
+  text-align: center;
+  padding: 3rem 0 2rem;
+}
+
+.hero-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid rgba(0,212,255,0.3);
+  border-radius: 20px;
+  font-size: 0.7rem;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
+.hero h1 .accent { color: var(--cyan); }
+
+.hero p {
+  color: var(--text-2);
+  font-size: 0.9rem;
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  line-height: 1.7;
+}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 3rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(13,17,23,0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-zone::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(circle at center, rgba(0,212,255,0.03) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.upload-zone:hover::before, .upload-zone.dragover::before { opacity: 1; }
+
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--cyan-dim);
+  background: rgba(0,212,255,0.03);
+  box-shadow: var(--glow-cyan);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+  filter: grayscale(0.5);
+}
+
+.upload-zone h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-zone p {
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+.upload-zone input { display: none; }
+
+/* ── GRID ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+
+@media (max-width: 900px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.card:hover { border-color: var(--border-hover); }
+
+.card-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0,0,0,0.2);
+}
+
+.card-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+
+.card-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(0,212,255,0.1);
+  color: var(--cyan);
+  border: 1px solid rgba(0,212,255,0.2);
+}
+
+.card-body { padding: 1.25rem; }
+
+/* ── IMAGE PREVIEW ── */
+.img-preview {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--bg-0);
+  display: block;
+}
+
+.img-container {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+
+.img-label {
+  position: absolute;
+  top: 8px; left: 8px;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.8);
+  color: var(--cyan);
+  border: 1px solid rgba(0,212,255,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── PREDICTION BARS ── */
+.pred-list { display: flex; flex-direction: column; gap: 8px; }
+
+.pred-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.pred-item:last-child { border-bottom: none; }
+
+.pred-label {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.pred-bar-wrap {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pred-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0;
+}
+
+.pred-bar.high   { background: var(--red); box-shadow: 0 0 8px rgba(255,71,87,0.5); }
+.pred-bar.medium { background: var(--amber); }
+.pred-bar.low    { background: var(--green-dim); }
+
+.pred-score {
+  font-size: 0.75rem;
+  font-weight: 500;
+  min-width: 40px;
+  text-align: right;
+  color: var(--text-1);
+}
+
+/* ── ANOMALY GAUGE ── */
+.anomaly-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.gauge-wrap {
+  position: relative;
+  width: 160px; height: 80px;
+  overflow: hidden;
+}
+
+.gauge-bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 12px solid var(--bg-3);
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+}
+
+.gauge-fill {
+  position: absolute;
+  top: 0; left: 0;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  border: 12px solid transparent;
+  border-bottom-color: var(--green);
+  border-left-color: var(--green);
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+  transform: rotate(0deg);
+  transform-origin: center center;
+  transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.5s;
+}
+
+.gauge-value {
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-1);
+}
+
+.anomaly-status {
+  font-size: 0.8rem;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.anomaly-status.normal {
+  background: rgba(0,255,157,0.1);
+  color: var(--green);
+  border: 1px solid rgba(0,255,157,0.3);
+}
+
+.anomaly-status.warning {
+  background: rgba(255,165,2,0.1);
+  color: var(--amber);
+  border: 1px solid rgba(255,165,2,0.3);
+}
+
+.anomaly-status.danger {
+  background: rgba(255,71,87,0.1);
+  color: var(--red);
+  border: 1px solid rgba(255,71,87,0.3);
+}
+
+.anomaly-score-detail {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* ── MODEL TABS ── */
+.model-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1rem;
+  background: var(--bg-0);
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.model-tab {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.model-tab:hover { color: var(--text-2); }
+
+.model-tab.active {
+  background: var(--bg-3);
+  color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+/* ── ANALYSE BTN ── */
+.btn-analyse {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(0,212,255,0.05));
+  border: 1px solid rgba(0,212,255,0.4);
+  border-radius: 10px;
+  color: var(--cyan);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+.btn-analyse::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: -100%;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  transform: translateY(-50%);
+  transition: left 0.5s;
+}
+
+.btn-analyse:hover::before { left: 100%; }
+
+.btn-analyse:hover {
+  background: linear-gradient(135deg, rgba(0,212,255,0.25), rgba(0,212,255,0.1));
+  box-shadow: var(--glow-cyan);
+  transform: translateY(-1px);
+}
+
+.btn-analyse:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── LOADER ── */
+.loader {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.loader.active { display: flex; }
+
+.loader-ring {
+  width: 48px; height: 48px;
+  border: 3px solid var(--bg-3);
+  border-top-color: var(--cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loader-text {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  animation: loader-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loader-pulse {
+  0%,100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* ── RESULTS SECTION ── */
+.results-section {
+  display: none;
+  margin-top: 2rem;
+  animation: fadeIn 0.5s ease;
+}
+
+.results-section.active { display: block; }
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── MULTIMODAL ── */
+.mm-compare {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 900px) { .mm-compare { grid-template-columns: 1fr; } }
+
+.mm-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.mm-card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.mm-card.image-only .mm-card-title { color: var(--cyan); }
+.mm-card.text-only  .mm-card-title { color: var(--amber); }
+.mm-card.multimodal .mm-card-title { color: var(--green); }
+
+/* ── TEXT INPUT ── */
+.text-input-wrap { margin-top: 1rem; }
+
+.text-input-wrap label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-2);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.clinical-text {
+  width: 100%;
+  background: var(--bg-0);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+}
+
+.clinical-text:focus {
+  outline: none;
+  border-color: var(--cyan-dim);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.05);
+}
+
+.clinical-text::placeholder { color: var(--text-3); }
+
+/* ── INFO BOX ── */
+.info-box {
+  background: rgba(0,212,255,0.04);
+  border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  color: var(--text-2);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.info-box strong { color: var(--cyan); }
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 2rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 0.75rem;
+  margin-top: 4rem;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-0); }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ── MODEL SCORES SUMMARY ── */
+.scores-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.score-chip {
+  flex: 1;
+  min-width: 120px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.score-chip .chip-model {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.score-chip .chip-top {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.score-chip .chip-conf {
+  font-size: 0.75rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚕</div>
+    Rad<span>IA</span>
+  </div>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="switchTab('supervised')">Analyse supervisée</button>
+    <button class="nav-btn" onclick="switchTab('multimodal')">Multimodal</button>
+  </nav>
+  <div class="header-status">
+    <div class="status-dot"></div>
+    Système opérationnel
+  </div>
+</header>
+
+<main>
+
+  <!-- ══ TAB 1 : SUPERVISED ══ -->
+  <div class="tab-pane active" id="tab-supervised">
+    <div class="hero">
+      <div class="hero-tag">⚕ Aide au tri radiologique</div>
+      <h1>Analyse <span class="accent">radiographique</span><br>assistée par IA</h1>
+      <p>Chargez une radiographie thoracique pour obtenir une prédiction multi-modèles, un score d'anomalie et une visualisation Grad-CAM.</p>
+    </div>
+
+    <div class="grid-2" style="max-width: 900px; margin: 0 auto;">
+      <div>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <span class="upload-icon">🫁</span>
+          <h3>Déposer une radiographie</h3>
+          <p>PNG, JPG, DICOM — Glissez-déposez ou cliquez</p>
+          <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+
+        <div id="preview-wrap" style="display:none; margin-top:1rem;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Image chargée</span>
+              <span class="card-badge" id="file-name">—</span>
+            </div>
+            <div class="card-body">
+              <img id="preview-img" class="img-preview" src="" alt="Preview">
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-analyse" id="btn-analyse" onclick="runAnalysis()" disabled>
+          ⚡ LANCER L'ANALYSE
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">À propos du système</span>
+        </div>
+        <div class="card-body" style="font-size:0.8rem; color:var(--text-2); line-height:1.8;">
+          <p style="margin-bottom:0.75rem;">Ce système combine <strong style="color:var(--text-1)">3 architectures profondes</strong> entraînées sur ChestMNIST pour prédire <strong style="color:var(--text-1)">14 pathologies thoraciques</strong>.</p>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--cyan); font-size:0.7rem;">■</span>
+              <span><strong style="color:var(--text-1)">CNN scratch</strong> — baseline entraîné de zéro</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--amber); font-size:0.7rem;">■</span>
+              <span><strong style="color:var(--text-1)">ResNet50</strong> — transfer learning ImageNet</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="color:var(--green); font-size:0.7rem;">■</span>
+              <span><strong style="color:var(--text-1)">ViT Small</strong> — Vision Transformer</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+              <span style="color:var(--red); font-size:0.7rem;">■</span>
+              <span><strong style="color:var(--text-1)">Autoencoder</strong> — détection d'anomalies</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loader -->
+    <div class="loader" id="loader">
+      <div class="loader-ring"></div>
+      <div class="loader-text" id="loader-text">Initialisation des modèles...</div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="results-section">
+
+      <div class="section-title">Résultats de l'analyse</div>
+
+      <!-- Top predictions summary -->
+      <div class="scores-row" id="scores-row"></div>
+
+      <!-- Grid images -->
+      <div class="grid-3" style="margin-bottom:2rem;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Original</span><span class="card-badge">INPUT</span></div>
+          <div class="card-body">
+            <div class="img-container">
+              <img id="result-original" class="img-preview" src="" alt="Original">
+              <span class="img-label">Radiographie</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Grad-CAM</span><span class="card-badge">CNN</span></div>
+          <div class="card-body">
+            <div class="img-container">
+              <img id="result-gradcam" class="img-preview" src="" alt="GradCAM">
+              <span class="img-label">Zones actives</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Reconstruction AE</span><span class="card-badge">ANOMALIE</span></div>
+          <div class="card-body">
+            <div class="img-container">
+              <img id="result-recon" class="img-preview" src="" alt="Reconstruction">
+              <span class="img-label">Autoencoder</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anomaly + Models -->
+      <div class="grid-2">
+
+        <!-- Anomaly score -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Score d'anomalie</span>
+            <span class="card-badge">AUTOENCODER</span>
+          </div>
+          <div class="card-body">
+            <div class="anomaly-section">
+              <div class="gauge-wrap">
+                <div class="gauge-bg"></div>
+                <div class="gauge-fill" id="gauge-fill"></div>
+                <div class="gauge-value" id="gauge-value">0%</div>
+              </div>
+              <span class="anomaly-status" id="anomaly-status">—</span>
+              <span class="anomaly-score-detail" id="anomaly-detail">—</span>
+            </div>
+            <div style="margin-top:1rem; font-size:0.75rem; color:var(--text-3); line-height:1.6;">
+              Le score d'anomalie est calculé via l'erreur de reconstruction MSE. Une erreur élevée indique une image atypique ou hors distribution.
+            </div>
+          </div>
+        </div>
+
+        <!-- Predictions per model -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Prédictions par modèle</span>
+            <span class="card-badge">TOP 5</span>
+          </div>
+          <div class="card-body">
+            <div class="model-tabs">
+              <button class="model-tab active" onclick="switchModel('CNN', this)">CNN</button>
+              <button class="model-tab" onclick="switchModel('ResNet50', this)">ResNet50</button>
+              <button class="model-tab" onclick="switchModel('ViT', this)">ViT</button>
+            </div>
+            <div class="pred-list" id="pred-list"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2 : MULTIMODAL ══ -->
+  <div class="tab-pane" id="tab-multimodal">
+    <div class="hero">
+      <div class="hero-tag">🔀 Analyse multimodale</div>
+      <h1>Image + <span class="accent">Compte-rendu</span><br>radiologique</h1>
+      <p>Comparez les prédictions image seule, texte seul et fusion multimodale sur le dataset NIH complet.</p>
+    </div>
+
+    <div style="max-width: 900px; margin: 0 auto;">
+      <div class="info-box">
+        <strong>Dataset NIH Chest X-Ray</strong> — Les modèles multimodaux ont été entraînés sur les 112 120 radiographies NIH avec leurs annotations cliniques officielles (14 pathologies). Entrez les findings du radiologue pour activer la comparaison.
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <div class="upload-zone" id="mm-upload-zone" onclick="document.getElementById('mm-file-input').click()"
+               ondragover="handleDragOver(event, 'mm')" ondragleave="handleDragLeave(event, 'mm')" ondrop="handleDrop(event, 'mm')">
+            <span class="upload-icon">🫁</span>
+            <h3>Radiographie thoracique</h3>
+            <p>Glissez-déposez ou cliquez</p>
+            <input type="file" id="mm-file-input" accept="image/*" onchange="handleMMFileSelect(event)">
+          </div>
+
+          <div id="mm-preview-wrap" style="display:none; margin-top:1rem;">
+            <img id="mm-preview-img" class="img-preview" style="border-radius:8px; background:var(--bg-0);" src="" alt="Preview">
+          </div>
+        </div>
+
+        <div>
+          <div class="text-input-wrap">
+            <label>Annotations radiologiques (Finding Labels NIH)</label>
+            <textarea class="clinical-text" id="clinical-text"
+              placeholder="Ex: Cardiomegaly|Effusion&#10;ou: Atelectasis&#10;ou: No Finding"></textarea>
+          </div>
+          <div style="margin-top:0.75rem; font-size:0.75rem; color:var(--text-3); line-height:1.6;">
+            Pathologies disponibles : Atelectasis, Cardiomegaly, Effusion, Infiltration, Mass, Nodule, Pneumonia, Pneumothorax, Consolidation, Edema, Emphysema, Fibrosis, Pleural_Thickening, Hernia
+          </div>
+          <button class="btn-analyse" id="mm-btn-analyse" onclick="runMultimodal()" disabled>
+            🔀 ANALYSER (IMAGE + TEXTE)
+          </button>
+        </div>
+      </div>
+
+      <!-- MM Loader -->
+      <div class="loader" id="mm-loader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Fusion multimodale en cours...</div>
+      </div>
+
+      <!-- MM Results -->
+      <div class="results-section" id="mm-results-section">
+        <div class="section-title">Comparaison des modalités</div>
+        <div class="mm-compare">
+          <div class="mm-card image-only">
+            <div class="mm-card-title">🖼 Image seule</div>
+            <div class="pred-list" id="mm-img-preds"></div>
+          </div>
+          <div class="mm-card text-only">
+            <div class="mm-card-title">📝 Texte seul</div>
+            <div class="pred-list" id="mm-txt-preds"></div>
+          </div>
+          <div class="mm-card multimodal">
+            <div class="mm-card-title">⚡ Multimodal</div>
+            <div class="pred-list" id="mm-mm-preds"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  RadIA — Système d'aide au tri radiologique · Projet Deep Learning · ChestMNIST + NIH Chest X-Ray
+</footer>
+
+<script>
+let currentData = null;
+let currentModel = 'CNN';
+
+// ── Tab switching ──
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── File handling ──
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  showPreview(file);
+}
+
+function handleDragOver(e, prefix='') {
+  e.preventDefault();
+  document.getElementById(prefix ? 'mm-upload-zone' : 'upload-zone').classList.add('dragover');
+}
+
+function handleDragLeave(e, prefix='') {
+  document.getElementById(prefix ? 'mm-upload-zone' : 'upload-zone').classList.remove('dragover');
+}
+
+function handleDrop(e, prefix='') {
+  e.preventDefault();
+  handleDragLeave(e, prefix);
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  if (prefix === 'mm') {
+    document.getElementById('mm-file-input').files;
+    showMMPreview(file);
+  } else {
+    showPreview(file);
+  }
+}
+
+function handleMMFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) showMMPreview(file);
+}
+
+function showPreview(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('preview-img').src = e.target.result;
+    document.getElementById('preview-wrap').style.display = 'block';
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('btn-analyse').disabled = false;
+    document.getElementById('results-section').classList.remove('active');
+  };
+  reader.readAsDataURL(file);
+}
+
+function showMMPreview(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('mm-preview-img').src = e.target.result;
+    document.getElementById('mm-preview-wrap').style.display = 'block';
+    document.getElementById('mm-btn-analyse').disabled = false;
+    document.getElementById('mm-results-section').classList.remove('active');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Analysis ──
+async function runAnalysis() {
+  const fileInput = document.getElementById('file-input');
+  if (!fileInput.files[0]) return;
+
+  setLoading(true, 'Analyse CNN, ResNet50, ViT...');
+  document.getElementById('results-section').classList.remove('active');
+
+  const form = new FormData();
+  form.append('image', fileInput.files[0]);
+
+  try {
+    const res  = await fetch('/predict', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentData = data;
+    renderResults(data);
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setLoading(on, text='') {
+  const loader = document.getElementById('loader');
+  const btn    = document.getElementById('btn-analyse');
+  loader.classList.toggle('active', on);
+  btn.disabled = on;
+  if (text) document.getElementById('loader-text').textContent = text;
+}
+
+function renderResults(data) {
+  // Images
+  document.getElementById('result-original').src = `data:image/png;base64,${data.original_b64}`;
+  document.getElementById('result-gradcam').src   = `data:image/png;base64,${data.gradcam_b64}`;
+  document.getElementById('result-recon').src     = `data:image/png;base64,${data.recon_b64}`;
+
+  // Scores summary
+  const row = document.getElementById('scores-row');
+  row.innerHTML = '';
+  const colors = { CNN: 'var(--cyan)', ResNet50: 'var(--amber)', ViT: 'var(--green)' };
+  for (const [name, model] of Object.entries(data.models)) {
+    const top = model.predictions[0];
+    const chip = document.createElement('div');
+    chip.className = 'score-chip';
+    chip.innerHTML = `
+      <div class="chip-model">${name}</div>
+      <div class="chip-top" style="color:${colors[name]}">${top.label}</div>
+      <div class="chip-conf">${(top.score * 100).toFixed(1)}%</div>
+    `;
+    row.appendChild(chip);
+  }
+
+  // Anomaly
+  const pct = data.anomaly.percent;
+  renderAnomalyGauge(pct, data.anomaly.score);
+
+  // Predictions
+  renderPredictions(data, currentModel);
+
+  document.getElementById('results-section').classList.add('active');
+  setTimeout(() => animateBars(), 100);
+}
+
+function renderAnomalyGauge(pct, score) {
+  const gauge  = document.getElementById('gauge-fill');
+  const valEl  = document.getElementById('gauge-value');
+  const status = document.getElementById('anomaly-status');
+  const detail = document.getElementById('anomaly-detail');
+
+  const rotation = (pct / 100) * 180 - 180;
+  gauge.style.transform = `rotate(${rotation}deg)`;
+  valEl.textContent = `${Math.round(pct)}%`;
+
+  if (pct < 33) {
+    gauge.style.borderBottomColor = 'var(--green)';
+    gauge.style.borderLeftColor   = 'var(--green)';
+    status.textContent  = '✓ Normal';
+    status.className    = 'anomaly-status normal';
+  } else if (pct < 66) {
+    gauge.style.borderBottomColor = 'var(--amber)';
+    gauge.style.borderLeftColor   = 'var(--amber)';
+    status.textContent  = '⚠ Atypique';
+    status.className    = 'anomaly-status warning';
+  } else {
+    gauge.style.borderBottomColor = 'var(--red)';
+    gauge.style.borderLeftColor   = 'var(--red)';
+    status.textContent  = '✗ Anomalie détectée';
+    status.className    = 'anomaly-status danger';
+  }
+  detail.textContent = `MSE = ${score.toFixed(6)}`;
+}
+
+function renderPredictions(data, modelName) {
+  const list  = document.getElementById('pred-list');
+  const preds = data.models[modelName].predictions.slice(0, 7);
+  list.innerHTML = preds.map(p => {
+    const pct   = (p.score * 100).toFixed(1);
+    const level = p.score > 0.5 ? 'high' : p.score > 0.2 ? 'medium' : 'low';
+    return `
+      <div class="pred-item">
+        <span class="pred-label">${p.label}</span>
+        <div class="pred-bar-wrap">
+          <div class="pred-bar ${level}" style="width:0" data-width="${pct}%"></div>
+        </div>
+        <span class="pred-score">${pct}%</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function switchModel(name, btn) {
+  document.querySelectorAll('.model-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentModel = name;
+  if (currentData) {
+    renderPredictions(currentData, name);
+    setTimeout(() => animateBars(), 50);
+  }
+}
+
+function animateBars() {
+  document.querySelectorAll('.pred-bar').forEach(bar => {
+    const w = bar.dataset.width;
+    bar.style.width = w;
+  });
+}
+
+// ── Multimodal ──
+async function runMultimodal() {
+  const fileInput = document.getElementById('mm-file-input');
+  const text      = document.getElementById('clinical-text').value;
+  if (!fileInput.files[0]) return;
+
+  document.getElementById('mm-loader').classList.add('active');
+  document.getElementById('mm-btn-analyse').disabled = true;
+  document.getElementById('mm-results-section').classList.remove('active');
+
+  const form = new FormData();
+  form.append('image', fileInput.files[0]);
+  form.append('text', text);
+
+  try {
+    const res  = await fetch('/multimodal', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderMultimodal(data);
+  } catch(e) {
+    alert('Erreur : ' + e.message);
+  } finally {
+    document.getElementById('mm-loader').classList.remove('active');
+    document.getElementById('mm-btn-analyse').disabled = false;
+  }
+}
+
+function renderMMPreds(containerId, preds) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = preds.map(p => {
+    const pct   = (p.score * 100).toFixed(1);
+    const level = p.score > 0.5 ? 'high' : p.score > 0.2 ? 'medium' : 'low';
+    return `
+      <div class="pred-item">
+        <span class="pred-label">${p.label}</span>
+        <div class="pred-bar-wrap">
+          <div class="pred-bar ${level}" style="width:0" data-width="${pct}%"></div>
+        </div>
+        <span class="pred-score">${pct}%</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMultimodal(data) {
+  renderMMPreds('mm-img-preds', data.image_only);
+  renderMMPreds('mm-txt-preds', data.text_only);
+  renderMMPreds('mm-mm-preds',  data.multimodal);
+  document.getElementById('mm-results-section').classList.add('active');
+  setTimeout(() => animateBars(), 100);
+}
+</script>
+</body>
+</html>
